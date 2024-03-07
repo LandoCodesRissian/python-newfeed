@@ -7,17 +7,25 @@ from flask import g
 
 load_dotenv()
 
-# connect to databsae using env variable
+# connect to database using env variable
 engine = create_engine(getenv('DB_URL'), echo=True, pool_size=20, max_overflow=0)
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-def init_db():
+def init_db(app):
     Base.metadata.create_all(engine)
+    
+    # Register the function 'close_db' to be called when the app context ends
+    app.teardown_appcontext(close_db)
 
 def get_db():
-  if 'db' not in g:
-    # store db connection in app context
-    g.db = Session()
+    if 'db' not in g:
+        # store db connection in app context
+        g.db = Session()
+    return g.db
 
-  return g.db
+def close_db(e=None):
+    db = g.pop('db', None)
+
+    if db is not None:
+        db.close()
